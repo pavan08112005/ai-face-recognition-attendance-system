@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+attendance.db
+attendance_backup_before_pavan_delete.db
+*.sqlite
+*.sqlite3

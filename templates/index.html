@@ -1,0 +1,254 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#090b12">
+    <title>FaceAttend | Smart Attendance</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app">
+
+    <aside class="sidebar">
+        <div class="logo">
+            <div class="logo-icon">◉</div>
+            <div>
+                <h2>FaceAttend</h2>
+                <span>SMART ATTENDANCE</span>
+            </div>
+        </div>
+
+        <div class="sidebar-label">WORKSPACE</div>
+        <nav>
+            <button class="nav-item active" onclick="showPage('dashboard', this)">
+                <span class="nav-icon">▦</span><span>Dashboard</span>
+            </button>
+            <button class="nav-item" onclick="showPage('students', this)">
+                <span class="nav-icon">♙</span><span>Students</span>
+            </button>
+            <button class="nav-item" onclick="showPage('register', this)">
+                <span class="nav-icon">＋</span><span>Register Student</span>
+            </button>
+            <button class="nav-item" onclick="showPage('attendance', this)">
+                <span class="nav-icon">◎</span><span>Live Attendance</span>
+            </button>
+            <button class="nav-item" onclick="showPage('records', this)">
+                <span class="nav-icon">▤</span><span>Attendance Records</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <span class="status-dot"></span>
+            <div>
+                <strong>System Ready</strong>
+                <small>Face recognition enabled</small>
+            </div>
+        </div>
+        <div class="sidebar-version">FACEATTEND · LOCAL INSTANCE</div>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <div class="topbar-title">
+                <span class="eyebrow">SMART CAMPUS / ATTENDANCE</span>
+                <h1>Face-Based Attendance System</h1>
+                <p>AI-powered attendance using InsightFace and ArcFace.</p>
+            </div>
+            <div class="date-box">
+                <span>📅 TODAY</span>
+                <strong id="currentDate">Loading date...</strong>
+            </div>
+        </header>
+
+        <section id="dashboard" class="page active-page">
+            <div class="page-title">
+                <div>
+                    <span class="eyebrow">OVERVIEW</span>
+                    <h2>Dashboard</h2>
+                    <p>Here's your attendance overview.</p>
+                </div>
+                <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh data</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-top"><span>Total Students</span><span class="stat-icon blue">♙</span></div>
+                    <strong id="totalStudents">0</strong>
+                    <small>Registered profiles</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-top"><span>Present Today</span><span class="stat-icon green">✓</span></div>
+                    <strong id="presentToday">0</strong>
+                    <small>Attendance recorded</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-top"><span>Absent Today</span><span class="stat-icon red">×</span></div>
+                    <strong id="absentToday">0</strong>
+                    <small>Not yet marked present</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-top"><span>Attendance Rate</span><span class="stat-icon purple">%</span></div>
+                    <strong id="attendancePercentage">0%</strong>
+                    <small>Today's attendance</small>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h3>Today's Attendance</h3>
+                        <p>Latest records from your attendance database</p>
+                    </div>
+                    <span class="live-indicator"><span class="status-dot"></span> LIVE DATA</span>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead><tr>
+                            <th>Student ID</th><th>Name</th><th>Date</th>
+                            <th>Time</th><th>Session</th><th>Status</th>
+                        </tr></thead>
+                        <tbody id="todayTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section-caption">POWERED BY</div>
+            <div class="info-grid">
+                <div class="info-card"><span class="tech-icon">✳</span><div><strong>InsightFace</strong><p>Face analysis engine</p></div></div>
+                <div class="info-card"><span class="tech-icon">◉</span><div><strong>ArcFace</strong><p>Face embeddings</p></div></div>
+                <div class="info-card"><span class="tech-icon">▤</span><div><strong>SQLite</strong><p>Local data storage</p></div></div>
+                <div class="info-card"><span class="tech-icon">⌗</span><div><strong>OpenCV</strong><p>Camera processing</p></div></div>
+            </div>
+        </section>
+
+        <section id="students" class="page">
+            <div class="page-title">
+                <div>
+                    <span class="eyebrow">PEOPLE</span>
+                    <h2>Registered Students</h2>
+                    <p>Manage and review enrolled face profiles.</p>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <div><h3>Student Directory</h3><p>Students enrolled in the recognition system</p></div>
+                    <span class="record-count" id="studentCount">0 Students</span>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Student ID</th><th>Name</th><th>Registered On</th></tr></thead>
+                        <tbody id="studentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="register" class="page">
+            <div class="page-title">
+                <div>
+                    <span class="eyebrow">ENROLLMENT</span>
+                    <h2>Register Student</h2>
+                    <p>Create a new face recognition profile.</p>
+                </div>
+            </div>
+            <div class="form-card">
+                <div class="form-icon">♙</div>
+                <span class="eyebrow">NEW PROFILE</span>
+                <h3>Student Registration</h3>
+                <p class="form-description">Enter the student's details. The local registration process will capture their face using the webcam.</p>
+
+                <label for="studentId">Student ID</label>
+                <input type="text" id="studentId" placeholder="e.g. is413" autocomplete="off">
+
+                <label for="studentName">Student Name</label>
+                <input type="text" id="studentName" placeholder="e.g. Rahul" autocomplete="off">
+
+                <button class="primary-btn" onclick="registerStudent()">◎ Start Face Registration <span>→</span></button>
+                <div id="registerMessage" class="message"></div>
+                <p class="privacy-note">Face data is managed by your local attendance system.</p>
+            </div>
+        </section>
+
+        <section id="attendance" class="page">
+            <div class="page-title">
+                <div>
+                    <span class="eyebrow">RECOGNITION</span>
+                    <h2>Live Attendance</h2>
+                    <p>Run face recognition to record student attendance.</p>
+                </div>
+            </div>
+            <div class="live-card">
+                <div class="camera-placeholder">
+                    <div class="camera-ring"><div class="camera-icon">◎</div></div>
+                    <span class="live-indicator"><span class="status-dot"></span> CAMERA SESSION</span>
+                    <h3>Automatic Attendance</h3>
+                    <p>Start the local camera recognition process to detect enrolled students.</p>
+                    <button class="primary-btn" onclick="startAttendance()">▶ Start Attendance <span>→</span></button>
+                    <div id="attendanceMessage" class="message"></div>
+                </div>
+                <div class="live-info">
+                    <span class="eyebrow">HOW IT WORKS</span>
+                    <h3>Recognition pipeline</h3>
+                    <div class="pipeline-step"><span>01</span><div><strong>Face detection</strong><p>OpenCV camera frames are processed.</p></div></div>
+                    <div class="pipeline-step"><span>02</span><div><strong>Face matching</strong><p>InsightFace embeddings are compared with enrolled profiles.</p></div></div>
+                    <div class="pipeline-step"><span>03</span><div><strong>Attendance record</strong><p>SQLite stores a student's daily session record.</p></div></div>
+                    <p class="privacy-note">The camera runs through your local Python process.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="records" class="page">
+            <div class="page-title">
+                <div>
+                    <span class="eyebrow">HISTORY</span>
+                    <h2>Attendance Records</h2>
+                    <p>Review and export recorded attendance.</p>
+                </div>
+                <button class="primary-btn small" onclick="downloadCSV()">↓ Export CSV</button>
+            </div>
+            <div class="panel">
+                
+<div class="panel-header">
+    <div>
+        <h3>Attendance History</h3>
+        <p>Records stored in your local database</p>
+    </div>
+
+    <div class="attendance-filters">
+        <label for="attendanceDateFilter">Filter by date</label>
+        <input
+            type="date"
+            id="attendanceDateFilter"
+            onchange="filterAttendanceByDate()"
+        >
+        <button
+            type="button"
+            class="refresh-btn"
+            onclick="clearAttendanceDateFilter()"
+        >
+            Clear
+        </button>
+    </div>
+</div>
+
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Student ID</th><th>Name</th><th>Date</th><th>Time</th><th>Session</th></tr></thead>
+                        <tbody id="recordsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <footer class="main-footer">
+            <span>FaceAttend <span class="footer-dot">✦</span> Face Recognition Attendance</span>
+            <span>Built with Python · InsightFace · OpenCV</span>
+        </footer>
+    </main>
+</div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>
