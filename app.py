@@ -12,7 +12,6 @@ from attendance_system import find_best_match
 import cv2
 import numpy as np
 import threading
-from waitress import serve
 
 import sqlite3
 import subprocess
