@@ -171,33 +171,97 @@
             </div>
         </section>
 
-        <section id="attendance" class="page">
-            <div class="page-title">
+        
+<section id="attendance" class="page">
+    <div class="page-title">
+        <div>
+            <span class="eyebrow">RECOGNITION</span>
+            <h2>Live Attendance</h2>
+            <p>Recognize enrolled students using your browser camera.</p>
+        </div>
+    </div>
+
+    <div class="live-card">
+        <div class="camera-placeholder">
+            <video
+                id="attendanceVideo"
+                autoplay
+                playsinline
+                muted
+                style="display:none; width:100%; max-width:640px; border-radius:14px;"
+            ></video>
+            
+
+            <canvas id="attendanceCanvas" style="display:none;"></canvas>
+
+            <div id="cameraPlaceholder">
+                <div class="camera-ring">
+                    <div class="camera-icon">◎</div>
+                </div>
+                <h3>Browser Camera</h3>
+                <p>Allow camera access to begin attendance recognition.</p>
+            </div>
+
+            <div>
+                <button
+                    type="button"
+                    class="primary-btn"
+                    id="startAttendanceBtn"
+                    onclick="startAttendance()"
+                >
+                    ▶ Start Camera <span>→</span>
+                </button>
+
+                <button
+                    type="button"
+                    class="refresh-btn"
+                    id="stopAttendanceBtn"
+                    onclick="stopAttendance()"
+                    style="display:none;"
+                >
+                    ■ Stop Camera
+                </button>
+            </div>
+
+            <div id="attendanceMessage" class="message" aria-live="polite"></div>
+        </div>
+
+        <div class="live-info">
+            <span class="eyebrow">HOW IT WORKS</span>
+            <h3>Recognition pipeline</h3>
+
+            <div class="pipeline-step">
+                <span>01</span>
                 <div>
-                    <span class="eyebrow">RECOGNITION</span>
-                    <h2>Live Attendance</h2>
-                    <p>Run face recognition to record student attendance.</p>
+                    <strong>Browser camera</strong>
+                    <p>Capture frames with your permission.</p>
                 </div>
             </div>
-            <div class="live-card">
-                <div class="camera-placeholder">
-                    <div class="camera-ring"><div class="camera-icon">◎</div></div>
-                    <span class="live-indicator"><span class="status-dot"></span> CAMERA SESSION</span>
-                    <h3>Automatic Attendance</h3>
-                    <p>Start the local camera recognition process to detect enrolled students.</p>
-                    <button class="primary-btn" onclick="startAttendance()">▶ Start Attendance <span>→</span></button>
-                    <div id="attendanceMessage" class="message"></div>
-                </div>
-                <div class="live-info">
-                    <span class="eyebrow">HOW IT WORKS</span>
-                    <h3>Recognition pipeline</h3>
-                    <div class="pipeline-step"><span>01</span><div><strong>Face detection</strong><p>OpenCV camera frames are processed.</p></div></div>
-                    <div class="pipeline-step"><span>02</span><div><strong>Face matching</strong><p>InsightFace embeddings are compared with enrolled profiles.</p></div></div>
-                    <div class="pipeline-step"><span>03</span><div><strong>Attendance record</strong><p>SQLite stores a student's daily session record.</p></div></div>
-                    <p class="privacy-note">The camera runs through your local Python process.</p>
+
+            <div class="pipeline-step">
+                <span>02</span>
+                <div>
+                    <strong>Face matching</strong>
+                    <p>The server compares detected faces with enrolled profiles.</p>
                 </div>
             </div>
-        </section>
+
+            <div class="pipeline-step">
+                <span>03</span>
+                <div>
+                    <strong>Attendance record</strong>
+                    <p>Recognized students can be recorded in the attendance database.</p>
+                </div>
+            </div>
+
+            <p class="privacy-note">
+                Camera access requires your permission. Frames will be sent to the server
+                for processing when recognition is implemented.
+            </p>
+        </div>
+    </div>
+</section>
+
 
         <section id="records" class="page">
             <div class="page-title">

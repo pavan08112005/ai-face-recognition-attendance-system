@@ -433,27 +433,157 @@ async function registerStudent() {
 // LIVE ATTENDANCE
 // ==============================
 
+
+
+let attendanceCameraStream = null;
+let attendanceRecognitionTimer = null;
+let attendanceRequestInProgress = false;
+
 async function startAttendance() {
     const message = document.getElementById("attendanceMessage");
+    const video = document.getElementById("attendanceVideo");
+    const placeholder = document.getElementById("cameraPlaceholder");
+    const startButton = document.getElementById("startAttendanceBtn");
+    const stopButton = document.getElementById("stopAttendanceBtn");
+    
+    if (attendanceCameraStream) return;
 
-    message.textContent = "Starting attendance camera...";
+    if (!navigator.mediaDevices?.getUserMedia) {
+        message.textContent = "Camera access requires HTTPS or localhost.";
+        attendanceAdminPassword = "";
+        return;
+    }
+
+    message.textContent = "Requesting camera permission...";
 
     try {
-        const response = await fetch("/api/start-attendance", {
-            method: "POST"
+        attendanceCameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: "user",
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            },
+            audio: false
         });
 
-        const data = await response.json();
+        video.srcObject = attendanceCameraStream;
+        video.style.display = "block";
+        placeholder.style.display = "none";
+        startButton.style.display = "none";
+        stopButton.style.display = "inline-block";
 
-        message.textContent =
-            data.message || "Attendance request completed.";
+        await video.play();
 
+        message.textContent = "Camera ready. Starting recognition...";
+
+        // Wait for the video to produce usable frames.
+        await new Promise(resolve => {
+            if (video.videoWidth > 0) {
+                resolve();
+            } else {
+                video.addEventListener("loadedmetadata", resolve, { once: true });
+            }
+        });
+
+        attendanceRecognitionTimer = setInterval(
+            recognizeAttendanceFrame,
+            1500
+        );
     } catch (error) {
-        message.textContent = "Unable to start attendance.";
+        console.error("Camera startup error:", error);
 
-        console.error("Attendance start error:", error);
+        if (attendanceCameraStream) {
+            attendanceCameraStream.getTracks().forEach(track => track.stop());
+        }
+
+        attendanceCameraStream = null;
+        
+        message.textContent = "Unable to start the camera. Check camera permission.";
     }
 }
+
+async function recognizeAttendanceFrame() {
+    if (attendanceRequestInProgress || !attendanceCameraStream) return;
+
+    const video = document.getElementById("attendanceVideo");
+    const message = document.getElementById("attendanceMessage");
+
+    if (!video.videoWidth || !video.videoHeight) return;
+
+    attendanceRequestInProgress = true;
+
+    try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const context = canvas.getContext("2d");
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const blob = await new Promise(resolve =>
+            canvas.toBlob(resolve, "image/jpeg", 0.8)
+        );
+
+        if (!blob) {
+            message.textContent = "Could not capture a camera frame.";
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("frame", blob, "frame.jpg");
+
+        const response = await fetch("/api/recognize-frame", {
+    method: "POST",
+    body: formData
+});
+
+        const result = await response.json();
+
+        
+
+        if (result.recognized && result.success) {
+            message.textContent = result.attendance_marked
+                ? `Attendance marked: ${result.name} (${result.student_id})`
+                : `${result.name}: attendance already marked.`;
+        } else {
+            message.textContent = result.message || "Face not recognized.";
+        }
+    } catch (error) {
+        console.error("Recognition request failed:", error);
+        message.textContent = "Could not contact the recognition server.";
+    } finally {
+        attendanceRequestInProgress = false;
+    }
+}
+
+function stopAttendance() {
+    const message = document.getElementById("attendanceMessage");
+    const video = document.getElementById("attendanceVideo");
+    const placeholder = document.getElementById("cameraPlaceholder");
+    const startButton = document.getElementById("startAttendanceBtn");
+    const stopButton = document.getElementById("stopAttendanceBtn");
+
+
+    if (attendanceRecognitionTimer !== null) {
+        clearInterval(attendanceRecognitionTimer);
+        attendanceRecognitionTimer = null;
+    }
+
+    if (attendanceCameraStream) {
+        attendanceCameraStream.getTracks().forEach(track => track.stop());
+        attendanceCameraStream = null;
+    }
+
+    video.srcObject = null;
+    video.style.display = "none";
+    placeholder.style.display = "block";
+    startButton.style.display = "inline-block";
+    stopButton.style.display = "none";
+
+    
+    message.textContent = "Camera stopped.";
+}
+
 
 
 // ==============================

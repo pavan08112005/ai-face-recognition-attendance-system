@@ -1,5 +1,17 @@
 from flask import Flask, jsonify, request, render_template, Response
-from database import get_students, get_attendance
+from database import (
+    get_students,
+    get_attendance,
+    get_connection,
+    initialize_database,
+    mark_attendance,
+)
+
+from face_engine import FaceEngine
+from attendance_system import find_best_match
+import cv2
+import numpy as np
+import threading
 from waitress import serve
 
 import sqlite3
@@ -13,6 +25,21 @@ from functools import wraps
 
 
 app = Flask(__name__)
+initialize_database()
+# Initialize the face recognition engine once.
+face_engine = None
+face_engine_lock = threading.Lock()
+face_inference_lock = threading.Lock()
+
+def get_face_engine():
+    global face_engine
+
+    if face_engine is None:
+        with face_engine_lock:
+            if face_engine is None:
+                face_engine = FaceEngine()
+
+    return face_engine
 import secrets
 
 ADMIN_PASSWORD = os.environ.get("ATTENDANCE_ADMIN_PASSWORD")
@@ -114,13 +141,7 @@ def dashboard():
 
 @app.route("/api/students")
 def students():
-
-    db_path = os.path.join(
-        BASE_DIR,
-        "attendance.db"
-    )
-
-    conn = sqlite3.connect(db_path)
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -130,13 +151,11 @@ def students():
     """)
 
     rows = cursor.fetchall()
-
     conn.close()
 
     result = []
 
     for row in rows:
-
         result.append({
             "student_id": row[0],
             "name": row[1],
@@ -145,6 +164,123 @@ def students():
 
     return jsonify(result)
 
+
+@app.route("/api/recognize-frame", methods=["POST"])
+def recognize_frame():
+
+    # Keep the rest of your existing recognition code below this point.
+
+
+    if "frame" not in request.files:
+        return jsonify({
+            "success": False,
+            "message": "No camera frame received."
+        }), 400
+
+    uploaded_frame = request.files["frame"]
+
+    # Reject empty or excessively large frames.
+    frame_bytes = uploaded_frame.read(2 * 1024 * 1024 + 1)
+
+    if not frame_bytes or len(frame_bytes) > 2 * 1024 * 1024:
+        return jsonify({
+            "success": False,
+            "message": "Invalid or oversized camera frame."
+        }), 400
+
+    frame_array = np.frombuffer(frame_bytes, dtype=np.uint8)
+    frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+
+    if frame is None:
+        return jsonify({
+            "success": False,
+            "message": "Could not read the camera frame."
+        }), 400
+
+    try:
+        engine = get_face_engine()
+
+        with face_inference_lock:
+            faces = engine.detect_faces(frame)
+
+            if len(faces) != 1:
+                return jsonify({
+                    "success": False,
+                    "message": (
+                        "No face detected."
+                        if len(faces) == 0
+                        else "Please ensure only one face is visible."
+                    )
+                }), 200
+
+            face = faces[0]
+
+            quality_ok, quality_message = engine.assess_face_quality(
+                frame, face
+            )
+
+            if not quality_ok:
+                return jsonify({
+                    "success": False,
+                    "message": quality_message
+                }), 200
+
+            embedding = engine.get_embedding(face)
+
+        if embedding is None:
+            return jsonify({
+                "success": False,
+                "message": "Could not generate a face embedding."
+            }), 200
+
+        students_list = get_students()
+
+        if not students_list:
+            return jsonify({
+                "success": False,
+                "message": "No students are registered yet."
+            }), 200
+
+        best_student, best_score, second_best_score = find_best_match(
+            embedding, students_list
+        )
+
+        if (
+            best_student is None
+            or best_score < 0.45
+            or best_score - second_best_score < 0.05
+        ):
+            return jsonify({
+                "success": False,
+                "message": "Face not confidently matched."
+            }), 200
+
+        marked = mark_attendance(
+            best_student["student_id"],
+            best_student["name"],
+            session="classroom"
+        )
+
+        return jsonify({
+            "success": True,
+            "recognized": True,
+            "student_id": best_student["student_id"],
+            "name": best_student["name"],
+            "confidence": round(float(best_score), 3),
+            "attendance_marked": marked,
+            "message": (
+                "Attendance marked successfully."
+                if marked
+                else "Attendance was already marked for this session."
+            )
+        }), 200
+
+    except Exception:
+        app.logger.exception("Face recognition failed")
+        return jsonify({
+            "success": False,
+            "message": "Recognition failed. Check the server logs."
+        }), 500
 
 # ==========================================
 # ATTENDANCE API
